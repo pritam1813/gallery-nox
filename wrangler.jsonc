@@ -9,5 +9,13 @@
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "gallery-nox-db",
+			"database_id": "76686125-968b-4b2a-89a1-f3b1451a9474",
+			"migrations_dir": "migrations"
+		}
+	]
 }

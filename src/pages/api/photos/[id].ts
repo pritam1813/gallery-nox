@@ -1,4 +1,6 @@
 // src/pages/api/photos/[id].ts
+export const prerender = false; // <-- ADD THIS MAGIC LINE
+
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 
@@ -12,7 +14,7 @@ export const DELETE: APIRoute = async ({ params }) => {
   }
 
   try {
-    // 1. Fetch the photo details from D1 first
+    // 1. Fetch the photo details from D1
     const photo = await env.DB.prepare("SELECT * FROM Photos WHERE id = ?")
       .bind(photoId)
       .first();
@@ -23,19 +25,16 @@ export const DELETE: APIRoute = async ({ params }) => {
       });
     }
 
-    // 2. Extract the filename from the URL to delete it from R2
-    // If URL is "https://images.domain.com/uuid.jpg", this grabs "uuid.jpg"
+    // 2. Extract the filename to delete from R2
     const urlParts = (photo.url as string).split("/");
     const filename = urlParts[urlParts.length - 1];
 
-    // Delete from Cloudflare R2
     await env.BUCKET.delete(filename);
 
     // 3. Delete from D1 Database
     await env.DB.prepare("DELETE FROM Photos WHERE id = ?").bind(photoId).run();
 
     // 4. Update the Album's photo count
-    // We also check if the album is now empty, and if so, reset the cover image
     const defaultCover =
       "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80";
 

@@ -2,6 +2,7 @@
 export const prerender = false;
 import Layout from "../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
+import type { Album } from "../data/mock";
 
 Astro.response.headers.set(
   "Cache-Control",
@@ -11,10 +12,7 @@ Astro.response.headers.set(
 // 2. Fetch all albums from the D1 Database
 const { results: albums } = await env.DB.prepare(
   "SELECT * FROM Albums ORDER BY createdAt DESC",
-).all();
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+).all<Album>();
 ---
 
 <Layout title="Gallery Nox">

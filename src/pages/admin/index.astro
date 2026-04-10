@@ -1,5 +1,6 @@
 ---
 // src/pages/admin/index.astro
+export const prerender = false;
 import Layout from "../../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
 
@@ -173,7 +174,7 @@ const { results: albums } = await env.DB.prepare(
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as { id: string };
           // Redirect directly to the new album's management page!
           window.location.href = `/admin/album/${data.id}`;
         } else {

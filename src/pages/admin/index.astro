@@ -1,0 +1,191 @@
+---
+// src/pages/admin/index.astro
+import Layout from "../../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+
+// Fetch all albums from the D1 Database
+const { results: albums } = await env.DB.prepare(
+  "SELECT * FROM Albums ORDER BY createdAt DESC",
+).all();
+---
+
+<Layout title="Admin Dashboard">
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <header
+      class="flex justify-between items-end mb-10 border-b border-zinc-800 pb-6"
+    >
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-white">
+          Admin Dashboard
+        </h1>
+        <p class="text-zinc-400 mt-1">Manage your galleries and photos.</p>
+      </div>
+      <button
+        id="open-modal-btn"
+        class="bg-white text-black hover:bg-zinc-200 px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg transition-colors active:scale-95"
+      >
+        + New Album
+      </button>
+    </header>
+
+    {
+      albums.length === 0 ? (
+        <div class="text-center py-20 bg-zinc-900/50 rounded-2xl border border-dashed border-zinc-700">
+          <p class="text-zinc-400">No albums yet. Create one to get started!</p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {albums.map((album: any) => (
+            <a
+              href={`/admin/album/${album.id}`}
+              class="group block relative aspect-4/3 rounded-2xl overflow-hidden bg-zinc-900 border border-white/5 hover:border-white/20 transition-colors"
+            >
+              <img
+                src={album.coverImage}
+                alt={album.title}
+                class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+              />
+              <div class="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-5">
+                <h2 class="text-xl font-bold text-white">{album.title}</h2>
+                <p class="text-sm text-zinc-400 mt-1">
+                  {album.photoCount} Photos
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </main>
+
+  <div
+    id="create-modal"
+    class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center opacity-0 transition-opacity duration-300"
+  >
+    <div
+      class="bg-zinc-950 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl transform scale-95 transition-transform duration-300"
+      id="modal-content"
+    >
+      <h2 class="text-2xl font-bold text-white mb-2">Create New Album</h2>
+      <p class="text-sm text-zinc-400 mb-6">Give your new gallery a title.</p>
+
+      <form id="create-album-form" class="flex flex-col gap-4">
+        <div>
+          <label for="album-title" class="sr-only">Album Title</label>
+          <input
+            type="text"
+            id="album-title"
+            name="title"
+            placeholder="e.g. Summer Vacation 2026"
+            required
+            class="w-full bg-zinc-900 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <button
+            type="button"
+            id="close-modal-btn"
+            class="px-5 py-2.5 rounded-xl text-sm font-bold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="submit-album-btn"
+            class="bg-white text-black hover:bg-zinc-200 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+          >
+            Create
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const modal = document.getElementById("create-modal");
+    const modalContent = document.getElementById("modal-content");
+    const openBtn = document.getElementById("open-modal-btn");
+    const closeBtn = document.getElementById("close-modal-btn");
+    const form = document.getElementById(
+      "create-album-form",
+    ) as HTMLFormElement;
+    const submitBtn = document.getElementById(
+      "submit-album-btn",
+    ) as HTMLButtonElement;
+
+    if (!modal || !form) return;
+
+    // Open Modal
+    openBtn?.addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      // Tiny delay to allow display:flex to apply before animating opacity
+      requestAnimationFrame(() => {
+        modal.classList.remove("opacity-0");
+        modalContent?.classList.remove("scale-95");
+        modalContent?.classList.add("scale-100");
+      });
+      document.getElementById("album-title")?.focus();
+    });
+
+    // Close Modal Function
+    const closeModal = () => {
+      modal.classList.add("opacity-0");
+      modalContent?.classList.remove("scale-100");
+      modalContent?.classList.add("scale-95");
+      setTimeout(() => {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        form.reset();
+      }, 300); // Matches the duration-300 class
+    };
+
+    closeBtn?.addEventListener("click", closeModal);
+
+    // Close on clicking outside the modal box
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Handle Form Submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const titleInput = document.getElementById(
+        "album-title",
+      ) as HTMLInputElement;
+      const title = titleInput.value.trim();
+
+      if (!title) return;
+
+      const originalText = submitBtn.innerText;
+      submitBtn.innerText = "Creating...";
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch("/api/albums", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Redirect directly to the new album's management page!
+          window.location.href = `/admin/album/${data.id}`;
+        } else {
+          alert("Failed to create album. Check terminal for errors.");
+          submitBtn.innerText = originalText;
+          submitBtn.disabled = false;
+        }
+      } catch (error) {
+        alert("Network error.");
+        submitBtn.innerText = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  });
+</script>

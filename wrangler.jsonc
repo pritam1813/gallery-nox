@@ -17,5 +17,11 @@
 			"database_id": "76686125-968b-4b2a-89a1-f3b1451a9474",
 			"migrations_dir": "migrations"
 		}
-	]
+	],
+	"r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "gallery-images"
+    }
+  ]
 }

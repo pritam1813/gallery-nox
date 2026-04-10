@@ -1,23 +1,26 @@
 ---
+// src/pages/album/[id].astro
+export const prerender = false; // Explicitly tell Astro this is a server-rendered route
+
 import Layout from "../../layouts/Layout.astro";
-import { albums } from "../../data/mock";
+import { env } from "cloudflare:workers";
 
-// 1. Tell Astro which dynamic pages to build based on our mock data
-export function getStaticPaths() {
-  return albums.map((album) => ({
-    params: { id: album.id },
-    props: { album },
-  }));
-}
+const { id } = Astro.params;
 
-const { album } = Astro.props;
+if (!id) return Astro.redirect("/");
 
-// 2. Generate some dummy photo URLs for this specific album
-const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
-  id: `${album.id}-photo-${index}`,
-  // Appending a random query param so Unsplash gives us different images
-  url: `https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800&q=80&random=${index}`,
-}));
+// Fetch the specific album and its photos from the real D1 Database
+const album = await env.DB.prepare("SELECT * FROM Albums WHERE id = ?")
+  .bind(id)
+  .first();
+
+if (!album) return Astro.redirect("/");
+
+const { results: photos } = await env.DB.prepare(
+  "SELECT * FROM Photos WHERE albumId = ? ORDER BY createdAt DESC",
+)
+  .bind(id)
+  .all();
 ---
 
 <Layout title={`${album.title} | Gallery`}>
@@ -40,26 +43,32 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
       />
       <div>
         <h1 class="text-4xl font-extrabold tracking-tight">{album.title}</h1>
-        <p class="text-zinc-400 mt-1">{album.photoCount} Photos</p>
+        <p class="text-zinc-400 mt-1">{photos.length} Photos</p>
       </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {
-        photos.map((photo, index) => (
-          <button
-            class="aspect-4/5 overflow-hidden rounded-xl bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-white active:scale-95 transition-all photo-trigger"
-            data-index={index}
-          >
-            <img
-              src={photo.url}
-              loading="lazy"
-              class="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
-            />
-          </button>
-        ))
-      }
-    </div>
+    {
+      photos.length === 0 ? (
+        <div class="text-center py-20 text-zinc-500">
+          No photos in this album yet.
+        </div>
+      ) : (
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {photos.map((photo: any, index: number) => (
+            <button
+              class="aspect-4/5 overflow-hidden rounded-xl bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-white active:scale-95 transition-all photo-trigger"
+              data-index={index}
+            >
+              <img
+                src={photo.url}
+                loading="lazy"
+                class="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+              />
+            </button>
+          ))}
+        </div>
+      )
+    }
   </main>
 
   <div
@@ -67,7 +76,7 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
     class="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl hidden flex-col opacity-0 scale-[1.02] transition-all duration-500 ease-out"
   >
     <div
-      class="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-60 bg-linear-to-b from-black/70 to-transparent"
+      class="absolute top-0 inset-x-0 p-4 flex justify-between items-start z-60 bg-linear-to-b from-black/70 to-transparent"
     >
       <button
         id="close-viewer"
@@ -76,36 +85,36 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
         Close
       </button>
 
-      <button
-        id="toggle-direction"
-        class="text-white p-2 text-sm font-medium bg-black/50 backdrop-blur-md rounded-full px-4"
-      >
-        Mode: Horizontal
-      </button>
-
-      <div
-        id="mode-hint"
-        class="hidden opacity-0 transition-opacity duration-700 absolute top-full right-0 mt-4 pointer-events-none w-max z-0"
-      >
-        <div
-          class="absolute -top-1.5 right-6 w-3 h-3 bg-zinc-900 rotate-45 z-20"
+      <div class="relative flex flex-col items-end">
+        <button
+          id="toggle-direction"
+          class="text-white p-2 text-sm font-medium bg-black/50 backdrop-blur-md rounded-full px-4 relative z-10 transition-transform active:scale-95"
         >
-        </div>
+          Mode: Horizontal
+        </button>
 
-        <div class="relative group">
+        <div
+          id="mode-hint"
+          class="hidden opacity-0 transition-opacity duration-700 absolute top-full right-0 mt-4 pointer-events-none w-max z-0"
+        >
           <div
-            class="absolute -inset-0.5 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-lg blur opacity-75 animate-gradient-glow"
+            class="absolute -top-1.5 right-6 w-3 h-3 bg-zinc-900 rotate-45 z-20"
           >
           </div>
-
-          <div
-            class="relative bg-zinc-900 px-4 py-2 rounded-lg flex items-center justify-center"
-          >
-            <span
-              class="text-xs font-bold text-transparent bg-clip-text bg-linear-to-r from-pink-400 to-indigo-400 tracking-wide"
+          <div class="relative group">
+            <div
+              class="absolute -inset-0.5 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-lg blur opacity-75 animate-gradient-glow"
             >
-              Tap to change direction ✨
-            </span>
+            </div>
+            <div
+              class="relative bg-zinc-900 px-4 py-2 rounded-lg flex items-center justify-center"
+            >
+              <span
+                class="text-xs font-bold text-transparent bg-clip-text bg-linear-to-r from-pink-400 to-indigo-400 tracking-wide"
+              >
+                Tap to change direction ✨
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -141,7 +150,7 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
       zoom="true"
     >
       {
-        photos.map((photo) => (
+        photos.map((photo: any) => (
           <swiper-slide class="flex items-center justify-center">
             <div class="swiper-zoom-container">
               <img
@@ -155,6 +164,43 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
     </swiper-container>
   </div>
 </Layout>
+
+<style is:global>
+  @keyframes swipe-nudge {
+    0%,
+    100% {
+      transform: translateX(0);
+      opacity: 0;
+    }
+    20%,
+    80% {
+      opacity: 1;
+    }
+    50% {
+      transform: translateX(-30px);
+      opacity: 1;
+    }
+  }
+  .animate-swipe-nudge {
+    animation: swipe-nudge 1.5s ease-in-out 2 forwards;
+  }
+
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  .animate-gradient-glow {
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+  }
+</style>
 
 <script>
   import { register } from "swiper/element/bundle";
@@ -184,29 +230,22 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
 
     if (!viewer || !swiperEl) return;
 
-    // --- OPEN VIEWER LOGIC ---
     triggers.forEach((trigger) => {
       trigger.addEventListener("click", () => {
         const index = parseInt(trigger.getAttribute("data-index") || "0", 10);
 
-        // 1. Remove hidden state so the element exists in the DOM
         viewer.classList.remove("hidden");
         viewer.classList.add("flex");
         document.body.style.overflow = "hidden";
 
         swiperEl.swiper.slideTo(index, 0);
 
-        // 2. Wait for the next visual frame to trigger the CSS transition
         window.requestAnimationFrame(() => {
-          // Bring viewer forward and fade in
           viewer.classList.remove("opacity-0", "scale-[1.02]");
           viewer.classList.add("opacity-100", "scale-100");
-
-          // Push background back, blur, and dim it
           mainContent?.classList.add("scale-[0.96]", "opacity-30", "blur-sm");
         });
 
-        // Hint Logic (Unchanged)
         if (!localStorage.getItem("hasSeenSwipeHint") && swipeHint) {
           swipeHint.classList.remove("hidden");
           swipeHint.classList.add("flex");
@@ -229,16 +268,11 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
       });
     });
 
-    // --- CLOSE VIEWER LOGIC ---
     closeBtn?.addEventListener("click", () => {
-      // 1. Trigger the reverse CSS animations
       viewer.classList.remove("opacity-100", "scale-100");
       viewer.classList.add("opacity-0", "scale-[1.02]");
-
-      // Bring background back to normal
       mainContent?.classList.remove("scale-[0.96]", "opacity-30", "blur-sm");
 
-      // 2. Wait exactly 500ms (matching our duration-500 class) before hiding from DOM
       setTimeout(() => {
         viewer.classList.add("hidden");
         viewer.classList.remove("flex");
@@ -248,7 +282,6 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
       clearTimeout(modeHintTimeout);
     });
 
-    // Toggle Direction Logic (Unchanged)
     toggleBtn?.addEventListener("click", () => {
       const currentDirection = swiperEl.getAttribute("direction");
       const newDirection =
@@ -267,41 +300,3 @@ const photos = Array.from({ length: album.photoCount }).map((_, index) => ({
     });
   });
 </script>
-
-<style is:global>
-  @keyframes swipe-nudge {
-    0%,
-    100% {
-      transform: translateX(0);
-      opacity: 0;
-    }
-    20%,
-    80% {
-      opacity: 1;
-    }
-    50% {
-      transform: translateX(-30px);
-      opacity: 1;
-    }
-  }
-  .animate-swipe-nudge {
-    /* Plays the animation twice over 3 seconds */
-    animation: swipe-nudge 1.5s ease-in-out 2 forwards;
-  }
-
-  @keyframes gradient-shift {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-  .animate-gradient-glow {
-    background-size: 200% 200%;
-    animation: gradient-shift 3s ease infinite;
-  }
-</style>

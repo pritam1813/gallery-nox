@@ -20,7 +20,7 @@
 		// 	"migrations_dir": "migrations"
 		// },
 		{
-			"binding": "gallery_nox_db",
+			"binding": "DB",
 			"database_name": "gallery-nox-db",
 			"database_id": "89aa607c-bf04-4167-b983-bc8c3dc63f66"
 		}

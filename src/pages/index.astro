@@ -10,6 +10,10 @@ Astro.response.headers.set(
   "public, s-maxage=60, stale-while-revalidate=86400",
 );
 
+// 1. Check if the user is logged in via Cloudflare Access (Zero Trust)
+// Cloudflare Access sets a cookie named 'CF_Authorization' after successful login.
+const isAdmin = Astro.cookies.has("CF_Authorization");
+
 // 2. Fetch all albums from the D1 Database
 const { results: albums } = await env.DB.prepare(
   "SELECT * FROM Albums ORDER BY createdAt DESC",
@@ -18,9 +22,22 @@ const { results: albums } = await env.DB.prepare(
 
 <Layout title="Gallery Nox">
   <main class="max-w-3xl mx-auto px-4 py-8">
-    <header class="mb-10 mt-4">
-      <h1 class="text-4xl font-extrabold tracking-tight">Galleries</h1>
-      <p class="text-zinc-400 mt-2 font-medium">Select an album to explore.</p>
+    <header class="mb-10 mt-4 flex justify-between items-end">
+      <div>
+        <h1 class="text-4xl font-extrabold tracking-tight text-white">Galleries</h1>
+        <p class="text-zinc-400 mt-2 font-medium text-sm">Select an album to explore.</p>
+      </div>
+
+      {
+        isAdmin && (
+          <a
+            href="/admin"
+            class="text-zinc-400 hover:text-white text-xs font-bold border border-zinc-800 hover:border-zinc-700 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            Dashboard &rarr;
+          </a>
+        )
+      }
     </header>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">

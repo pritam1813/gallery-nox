@@ -4,6 +4,15 @@ export const prerender = false; // Explicitly tell Astro this is a server-render
 
 import Layout from "../../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
+import { Image } from "astro:assets";
+import type { Album } from "../../data/mock";
+
+interface Photo {
+  id: string;
+  albumId: string;
+  url: string;
+  createdAt: string;
+}
 
 const { id } = Astro.params;
 
@@ -12,7 +21,7 @@ if (!id) return Astro.redirect("/");
 // Fetch the specific album and its photos from the real D1 Database
 const album = await env.DB.prepare("SELECT * FROM Albums WHERE id = ?")
   .bind(id)
-  .first();
+  .first<Album>();
 
 if (!album) return Astro.redirect("/");
 
@@ -20,7 +29,7 @@ const { results: photos } = await env.DB.prepare(
   "SELECT * FROM Photos WHERE albumId = ? ORDER BY createdAt DESC",
 )
   .bind(id)
-  .all();
+  .all<Photo>();
 ---
 
 <Layout title={`${album.title} | Gallery`}>
@@ -35,9 +44,11 @@ const { results: photos } = await env.DB.prepare(
     >
 
     <div class="flex items-end gap-6 mb-10">
-      <img
+      <Image
         src={album.coverImage}
         alt={album.title}
+        width={256}
+        height={256}
         class="w-32 h-32 rounded-2xl object-cover shadow-2xl"
         style={`view-transition-name: album-cover-${album.id}`}
       />
@@ -54,13 +65,16 @@ const { results: photos } = await env.DB.prepare(
         </div>
       ) : (
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {photos.map((photo: any, index: number) => (
+          {photos.map((photo, index) => (
             <button
               class="aspect-4/5 overflow-hidden rounded-xl bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-white active:scale-95 transition-all photo-trigger"
               data-index={index}
             >
-              <img
+              <Image
                 src={photo.url}
+                alt={`Photo ${index + 1} from ${album.title}`}
+                width={600}
+                height={750}
                 loading="lazy"
                 class="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
               />
@@ -150,11 +164,14 @@ const { results: photos } = await env.DB.prepare(
       zoom="true"
     >
       {
-        photos.map((photo: any) => (
+        photos.map((photo, index) => (
           <swiper-slide class="flex items-center justify-center">
             <div class="swiper-zoom-container">
-              <img
+              <Image
                 src={photo.url}
+                alt={`Photo ${index + 1} from ${album.title}`}
+                width={1600}
+                height={1200}
                 class="max-w-full max-h-full object-contain"
               />
             </div>

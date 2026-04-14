@@ -3,6 +3,7 @@ export const prerender = false;
 import Layout from "../layouts/Layout.astro";
 import { env } from "cloudflare:workers";
 import type { Album } from "../data/mock";
+import { Image } from "astro:assets";
 
 Astro.response.headers.set(
   "Cache-Control",
@@ -29,9 +30,11 @@ const { results: albums } = await env.DB.prepare(
             href={`/album/${album.id}`}
             class="group block relative aspect-square overflow-hidden rounded-3xl bg-zinc-900 border border-white/5 active:scale-95 transition-transform"
           >
-            <img
+            <Image
               src={album.coverImage}
               alt={album.title}
+              width={800}
+              height={800}
               loading="lazy"
               class="object-cover w-full h-full transition-transform duration-700 ease-out group-hover:scale-105"
               style={`view-transition-name: album-cover-${album.id}`}

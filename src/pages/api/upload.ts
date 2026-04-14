@@ -34,8 +34,8 @@ export const POST: APIRoute = async ({ request }) => {
     const isDev = import.meta.env.DEV;
 
     // 4. Construct the Public URL
-    // You will configure a public domain for your bucket in the Cloudflare Dashboard later
-    const baseUrl = isDev ? "/api/images" : "https://images.yourdomain.com";
+    // Use the proxy for local dev, and the private env variable for production
+    const baseUrl = isDev ? "/api/images" : env.IMAGE_DOMAIN;
     const photoUrl = `${baseUrl}/${uniqueFilename}`;
 
     // 5. Save the record to the D1 Database

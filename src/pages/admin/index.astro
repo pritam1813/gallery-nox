@@ -69,6 +69,7 @@ const { results: albums } = await env.DB.prepare(
     }
   </main>
 
+  <!-- Create Album Modal -->
   <div
     id="create-modal"
     class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center opacity-0 transition-opacity duration-300"
@@ -112,6 +113,29 @@ const { results: albums } = await env.DB.prepare(
       </form>
     </div>
   </div>
+
+  <!-- Error/Status Modal -->
+  <div
+    id="status-modal"
+    class="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm hidden items-center justify-center opacity-0 transition-opacity duration-300"
+  >
+    <div
+      class="bg-zinc-950 border border-zinc-800 p-8 rounded-3xl w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300"
+      id="status-modal-content"
+    >
+      <h2 id="status-title" class="text-xl font-bold text-white mb-2">Error</h2>
+      <p id="status-desc" class="text-sm text-zinc-400 mb-6">Something went wrong.</p>
+      <div class="flex justify-end">
+        <button
+          type="button"
+          id="close-status-btn"
+          class="bg-white text-black hover:bg-zinc-200 px-5 py-2 rounded-xl text-sm font-bold transition-colors"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
 </Layout>
 
 <script>
@@ -127,13 +151,40 @@ const { results: albums } = await env.DB.prepare(
       "submit-album-btn",
     ) as HTMLButtonElement;
 
-    if (!modal || !form) return;
+    const statusModal = document.getElementById("status-modal");
+    const statusContent = document.getElementById("status-modal-content");
+    const statusTitle = document.getElementById("status-title");
+    const statusDesc = document.getElementById("status-desc");
+    const closeStatusBtn = document.getElementById("close-status-btn");
+
+    if (!modal || !form || !statusModal) return;
+
+    const showStatus = (title: string, desc: string) => {
+      if (statusTitle) statusTitle.innerText = title;
+      if (statusDesc) statusDesc.innerText = desc;
+      statusModal.classList.remove("hidden");
+      statusModal.classList.add("flex");
+      requestAnimationFrame(() => {
+        statusModal.classList.remove("opacity-0");
+        statusContent?.classList.remove("scale-95");
+        statusContent?.classList.add("scale-100");
+      });
+    };
+
+    closeStatusBtn?.addEventListener("click", () => {
+      statusModal.classList.add("opacity-0");
+      statusContent?.classList.remove("scale-100");
+      statusContent?.classList.add("scale-95");
+      setTimeout(() => {
+        statusModal.classList.add("hidden");
+        statusModal.classList.remove("flex");
+      }, 300);
+    });
 
     // Open Modal
     openBtn?.addEventListener("click", () => {
       modal.classList.remove("hidden");
       modal.classList.add("flex");
-      // Tiny delay to allow display:flex to apply before animating opacity
       requestAnimationFrame(() => {
         modal.classList.remove("opacity-0");
         modalContent?.classList.remove("scale-95");
@@ -151,12 +202,10 @@ const { results: albums } = await env.DB.prepare(
         modal.classList.add("hidden");
         modal.classList.remove("flex");
         form.reset();
-      }, 300); // Matches the duration-300 class
+      }, 300);
     };
 
     closeBtn?.addEventListener("click", closeModal);
-
-    // Close on clicking outside the modal box
     modal.addEventListener("click", (e) => {
       if (e.target === modal) closeModal();
     });
@@ -164,12 +213,8 @@ const { results: albums } = await env.DB.prepare(
     // Handle Form Submission
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      const titleInput = document.getElementById(
-        "album-title",
-      ) as HTMLInputElement;
+      const titleInput = document.getElementById("album-title") as HTMLInputElement;
       const title = titleInput.value.trim();
-
       if (!title) return;
 
       const originalText = submitBtn.innerText;
@@ -185,15 +230,14 @@ const { results: albums } = await env.DB.prepare(
 
         if (res.ok) {
           const data = (await res.json()) as { id: string };
-          // Redirect directly to the new album's management page!
           window.location.href = `/admin/album/${data.id}`;
         } else {
-          alert("Failed to create album. Check terminal for errors.");
+          showStatus("Error", "Failed to create album. Please try again.");
           submitBtn.innerText = originalText;
           submitBtn.disabled = false;
         }
       } catch (error) {
-        alert("Network error.");
+        showStatus("Error", "Network error occurred.");
         submitBtn.innerText = originalText;
         submitBtn.disabled = false;
       }

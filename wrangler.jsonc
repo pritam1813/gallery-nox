@@ -1,6 +1,8 @@
 {
 	"compatibility_date": "2026-04-10",
-	"compatibility_flags": ["global_fetch_strictly_public"],
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
 	"name": "gallery-nox",
 	"main": "@astrojs/cloudflare/entrypoints/server",
 	"assets": {
@@ -11,17 +13,22 @@
 		"enabled": true
 	},
 	"d1_databases": [
+		// {
+		// 	"binding": "DB",
+		// 	"database_name": "gallery-nox-db",
+		// 	"database_id": "76686125-968b-4b2a-89a1-f3b1451a9474",
+		// 	"migrations_dir": "migrations"
+		// },
 		{
-			"binding": "DB",
+			"binding": "gallery_nox_db",
 			"database_name": "gallery-nox-db",
-			"database_id": "76686125-968b-4b2a-89a1-f3b1451a9474",
-			"migrations_dir": "migrations"
+			"database_id": "89aa607c-bf04-4167-b983-bc8c3dc63f66"
 		}
 	],
 	"r2_buckets": [
-    {
-      "binding": "BUCKET",
-      "bucket_name": "gallery-images"
-    }
-  ]
+		{
+			"binding": "BUCKET",
+			"bucket_name": "gallery-nox"
+		}
+	]
 }

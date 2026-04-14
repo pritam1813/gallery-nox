@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 
 // NEW ASTRO 6 SYNTAX: Import environment directly
 import { env } from "cloudflare:workers";
+import { DEFAULT_ALBUM_COVER } from "../../data/constants";
 
 // GET /api/albums - Fetch all albums
 export const GET: APIRoute = async () => {
@@ -31,14 +32,10 @@ export const POST: APIRoute = async ({ request }) => {
     // Generate a quick random ID (e.g., using standard web crypto)
     const id = crypto.randomUUID();
 
-    // Default cover image until they upload photos
-    const defaultCover =
-      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80";
-
     await env.DB.prepare(
       "INSERT INTO Albums (id, title, coverImage) VALUES (?, ?, ?)",
     )
-      .bind(id, title, defaultCover)
+      .bind(id, title, DEFAULT_ALBUM_COVER)
       .run();
 
     return new Response(

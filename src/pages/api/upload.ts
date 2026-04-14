@@ -38,6 +38,20 @@ export const POST: APIRoute = async ({ request }) => {
     const baseUrl = isDev ? "/api/images" : env.IMAGE_DOMAIN;
     const photoUrl = `${baseUrl}/${uniqueFilename}`;
 
+    const isCover = formData.get("isCover") === "true";
+
+    if (isCover) {
+      // Just update the album cover, don't add to Photos table
+      await env.DB.prepare("UPDATE Albums SET coverImage = ? WHERE id = ?")
+        .bind(photoUrl, albumId)
+        .run();
+
+      return new Response(
+        JSON.stringify({ url: photoUrl, message: "Album cover updated!" }),
+        { status: 200 },
+      );
+    }
+
     // 5. Save the record to the D1 Database
     const photoId = crypto.randomUUID();
 

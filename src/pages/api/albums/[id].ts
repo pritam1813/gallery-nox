@@ -4,6 +4,40 @@ export const prerender = false;
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 
+export const PATCH: APIRoute = async ({ params, request }) => {
+  const albumId = params.id;
+  if (!albumId) {
+    return new Response(JSON.stringify({ error: "Album ID required" }), {
+      status: 400,
+    });
+  }
+
+  try {
+    const data = await request.json();
+    const { coverImage, title } = data;
+
+    if (coverImage) {
+      await env.DB.prepare("UPDATE Albums SET coverImage = ? WHERE id = ?")
+        .bind(coverImage, albumId)
+        .run();
+    }
+
+    if (title) {
+      await env.DB.prepare("UPDATE Albums SET title = ? WHERE id = ?")
+        .bind(title, albumId)
+        .run();
+    }
+
+    return new Response(JSON.stringify({ message: "Album updated!" }), {
+      status: 200,
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "Failed to update album" }), {
+      status: 500,
+    });
+  }
+};
+
 export const DELETE: APIRoute = async ({ params }) => {
   const albumId = params.id;
 
